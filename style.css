@@ -1,0 +1,115 @@
+/* Reseteo básico */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+/* --- VISTA DE CÁMARA --- */
+#camera-view {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+#videoPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+}
+#status {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    text-align: center;
+    font-size: 1.1rem;
+    color: white;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    z-index: 10;
+}
+
+/* Estilos del Contador */
+#countdown-timer {
+    position: absolute;
+    top: 80px; 
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 4rem; 
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+    z-index: 10;
+}
+
+/* --- ESTILOS DE LOS MODALES (Ambos popups) --- */
+/* (Estos estilos no cambian, se usan para ambos modales) */
+#modal-overlay { 
+    position: absolute; top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 30; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+#modal-content { 
+    background: white;
+    color: #333;
+    padding: 1.5rem 2rem;
+    border-radius: 10px;
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.modal-overlay-style {
+    position: absolute; top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 40; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+.modal-content-style {
+    background: white;
+    color: #333;
+    padding: 1.5rem 2rem;
+    border-radius: 10px;
+    text-align: center;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+#modal-content h2 { margin-top: 0; }
+#modal-content p { font-size: 1rem; line-height: 1.5; margin-bottom: 1.5rem; }
+#start-verification-button {
+    font-size: 1.1rem; font-weight: bold;
+    width: 100%; padding: 1rem;
+    border: none; border-radius: 8px;
+    background-color: #007bff; color: white;
+    cursor: pointer; transition: background-color 0.2s;
+}
+#start-verification-button:hover { background-color: #0056b3; }
+
+/* Spinner de carga */
+.loader {
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto 0 auto;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

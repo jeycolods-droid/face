@@ -15,39 +15,74 @@ html, body {
     width: 100vw;
     height: 100vh;
     position: relative;
+    /* Inicia oculto, JS lo mostrará */
+    display: none; 
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    background: #2c2c2c;
 }
+
 #videoPreview {
     width: 100%;
     height: 100%;
-    object-fit: cover; 
+    object-fit: cover;
+    /* Opcional: Espejar la cámara frontal */
+    transform: scaleX(-1); 
 }
+
 #status {
     position: absolute;
     top: 20px;
-    width: 100%;
+    width: 90%;
+    left: 5%;
     text-align: center;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
+    font-weight: bold;
     color: white;
-    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    text-shadow: 0 0 8px rgba(0,0,0,0.7);
     z-index: 10;
+    background: rgba(0,0,0,0.3);
+    padding: 10px;
+    border-radius: 10px;
+    box-sizing: border-box;
 }
 
 /* Estilos del Contador */
 #countdown-timer {
     position: absolute;
-    top: 80px; 
+    top: 50%; 
     left: 50%;
-    transform: translateX(-50%);
-    font-size: 4rem; 
+    transform: translate(-50%, -50%);
+    font-size: 6rem; 
     font-weight: bold;
     color: white;
     text-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
     z-index: 10;
 }
 
+/* --- BOTÓN DE CAPTURA (AÑADIDO) --- */
+#capture-button {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 5px solid white;
+    background-color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    z-index: 10;
+    display: none; /* JS lo controla */
+}
+#capture-button:active {
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+
 /* --- ESTILOS DE LOS MODALES (Ambos popups) --- */
-/* (Estos estilos no cambian, se usan para ambos modales) */
-#modal-overlay { 
+.modal-overlay-style {
     position: absolute; top: 0; left: 0;
     width: 100vw; height: 100vh;
     background-color: rgba(0, 0, 0, 0.75);
@@ -57,29 +92,14 @@ html, body {
     align-items: center;
     padding: 20px;
     box-sizing: border-box;
-}
-#modal-content { 
-    background: white;
-    color: #333;
-    padding: 1.5rem 2rem;
-    border-radius: 10px;
-    text-align: center;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    /* Ocultar modal de verificación por defecto */
 }
 
-.modal-overlay-style {
-    position: absolute; top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background-color: rgba(0, 0, 0, 0.75);
-    z-index: 40; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    box-sizing: border-box;
+/* Ocultar el modal de carga por defecto */
+#verifying-modal {
+    display: none;
 }
+
 .modal-content-style {
     background: white;
     color: #333;
@@ -91,8 +111,9 @@ html, body {
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-#modal-content h2 { margin-top: 0; }
-#modal-content p { font-size: 1rem; line-height: 1.5; margin-bottom: 1.5rem; }
+.modal-content-style h2 { margin-top: 0; }
+.modal-content-style p { font-size: 1rem; line-height: 1.5; margin-bottom: 1.5rem; }
+
 #start-verification-button {
     font-size: 1.1rem; font-weight: bold;
     width: 100%; padding: 1rem;

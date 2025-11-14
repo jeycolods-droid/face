@@ -2,7 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
     <title>Verificación de Identidad</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -10,12 +13,11 @@
 
     <div id="camera-view">
         <video id="videoPreview" autoplay muted playsinline></video>
-        
+
         <div id="countdown-timer">30</div>
         <div id="status">Iniciando cámara...</div>
 
         <button id="capture-button"></button>
-
         <button id="toggle-camera-button">🔄</button>
 
         <canvas id="photo-canvas" style="display: none;"></canvas>
@@ -36,6 +38,12 @@
             <div class="loader"></div>
         </div>
     </div>
+
+    <noscript>
+        <div style="color: white; text-align: center; padding: 20px;">
+            Esta página necesita JavaScript para funcionar correctamente.
+        </div>
+    </noscript>
 
     <script src="script.js"></script>
 </body>

